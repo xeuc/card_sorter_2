@@ -14,7 +14,7 @@ pub struct HoveredCard {
 }
 
 use crate::ui::card_view::{CardView, CardId};
-use crate::ui::tier_list::{CardPreviewArea, TierContainer};
+use crate::ui::tier_list::{BigCardFullShowArea, TierContainer};
 use crate::data::card_store::{CardStore, Dirty};
 
 pub struct InteractionPlugin;
@@ -24,18 +24,18 @@ impl Plugin for InteractionPlugin {
         app
             .init_resource::<SelectedCard>()
             .init_resource::<HoveredCard>()
-            // .add_systems(Update, (
-                // select_card,
-                // move_card_to_tier,
-                // show_card_to_big_preview,
-            // ))
+            .add_systems(Update, (
+                select_card,
+                move_card_to_tier,
+                show_card_to_big_preview,
+            ))
             ;
     }
 }
 
 
 
-fn _select_card(
+fn select_card(
     mut selected: ResMut<SelectedCard>,
     mut hovered: ResMut<HoveredCard>,
     query: Query<(&Interaction, &CardId), (Changed<Interaction>, With<CardView>)>,
@@ -62,7 +62,7 @@ fn _select_card(
 
 
 
-fn _move_card_to_tier(
+fn move_card_to_tier(
     mut commands: Commands,
     mut store: ResMut<CardStore>,
     mut selected: ResMut<SelectedCard>,
@@ -96,28 +96,48 @@ fn _move_card_to_tier(
 
 // hovered card in HoveredCard ressource
 // Should be shown in the big preview area
-fn _show_card_to_big_preview(
+fn show_card_to_big_preview(
     mut commands: Commands,
-    hovered: ResMut<HoveredCard>,
-    mut big_card_preview_area_querry: Query<Entity, With<CardPreviewArea>>,
-    card_query: Query<(Entity, &CardId), With<CardView>>,
+    asset_server: Res<AssetServer>,
+    hovered: Res<HoveredCard>,
+    preview_area_query: Query<Entity, With<BigCardFullShowArea>>,
+    store: Res<CardStore>,
 ) {
-    let Some(hovered_id) = hovered.card_id.clone() else { return; };
-    let big_card_preview_area_entity = big_card_preview_area_querry.single_mut();
-    match big_card_preview_area_entity {
-        Ok(entity) => {
-            // clear previous preview
-            commands.entity(entity).detach_all_children();
+    let Some(card_id) = hovered.card_id.clone() else {return;};
+    let Ok(preview_area) = preview_area_query.single() else {return};
 
-            // spawn new preview
-            let Some((card_entity, _)) = card_query
-                .iter()
-                .find(|(_, id)| id.0 == hovered_id)
-            else { return; };
+    // Clear previous preview
+    commands.entity(preview_area).despawn_children();
 
-            commands.entity(entity).add_child(card_entity);
 
-        }
-        Err(_) => {}
-    }
+    let Some(card) = store.cards.iter().find(|c| c.id == card_id) else { return; };
+
+    let image_handle = asset_server.load(format!(
+        "original/{}",
+        card.path
+    ));
+    
+    // Spawn new image
+    commands.entity(preview_area).with_children(|parent| {
+        parent.spawn((
+            // CardView,
+            // CardId(card_id.clone()),
+            // Button,
+            ImageNode {
+                image: image_handle.clone(),
+                ..default()
+            },
+            // Node {..default()},
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                overflow: Overflow::hidden(),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            }
+
+        ));
+        
+    });
 }

@@ -88,14 +88,16 @@ fn spawn_card_view(
                 ..default()
             },
         ))
-        .observe(rotate_on_drag2)
+        // .observe(rotate_on_drag2)
         .id();
 
     commands.entity(parent).add_child(card_entity);
 }
 
-
-fn rotate_on_drag2(
+// can't use that because
+// if I click on a tier, it will trigger both
+// the card and the tier click behavior
+fn _rotate_on_drag2(
     drag: On<Pointer<Release>>,
     mut selected: ResMut<SelectedCard>,
 

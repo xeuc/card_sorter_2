@@ -17,8 +17,9 @@ impl Plugin for TierListUiPlugin {
 const TIERS_HOLDER_FONT_COLOR: Color = Color::linear_rgb(0.05, 0.05, 0.05);
 const WAITING_FONT_COLOR: Color = Color::linear_rgb(0.01, 0.01, 0.01);
 
+
 #[derive(Component)]
-pub struct CardPreviewArea;
+pub struct BigCardFullShowArea;
 
 
 fn spawn_tier_list_ui(mut commands: Commands) {
@@ -44,7 +45,7 @@ fn spawn_tier_list_ui(mut commands: Commands) {
 
         // right half for big Card preview
         root.spawn((
-            CardPreviewArea,
+            BigCardFullShowArea,
             Node {
                 width: Val::Percent(50.0),
                 height: Val::Percent(100.0),
@@ -75,13 +76,13 @@ fn spawn_tiers(parent: &mut ChildSpawnerCommands) {
             spawn_tier_label(row, tier.clone());
             spawn_tier_container(row, tier.clone());
         })
-        .observe(rotate_on_drag)
+        // .observe(rotate_on_drag)
         ;
     }
 }
 
 
-fn rotate_on_drag(
+fn _rotate_on_drag(
     drag: On<Pointer<Release>>,
 
     mut selected: ResMut<SelectedCard>,
