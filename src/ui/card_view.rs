@@ -1,6 +1,7 @@
 
 use bevy::prelude::*;
 
+use crate::ui::interaction::SelectedCard;
 use crate::ui::tier_list::TierUiSet;
 
 
@@ -87,9 +88,27 @@ fn spawn_card_view(
                 ..default()
             },
         ))
+        .observe(rotate_on_drag2)
         .id();
 
     commands.entity(parent).add_child(card_entity);
+}
+
+
+fn rotate_on_drag2(
+    drag: On<Pointer<Release>>,
+    mut selected: ResMut<SelectedCard>,
+
+    card_query: Query<&CardId, With<CardView>>,
+) {
+    // Get card entity
+    let card_entity = drag.entity;
+    // Get card ID
+    let card_id = card_query.get(card_entity).unwrap();
+
+    selected.card_id = Some(card_id.0.clone());
+    info!("Selected card {}", card_id.0);
+
 }
 
 
