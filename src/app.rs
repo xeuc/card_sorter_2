@@ -15,8 +15,10 @@ impl Plugin for TierListAppPlugin {
             .init_resource::<CardStore>()
             .init_resource::<Dirty>()
 
-            // === Cam ===
+            // === Load Cards from cards.json ===
             .add_systems(Startup, load_cards)
+
+            // === Cam ===
             .add_systems(Startup, setup_camera)
 
             // === UI ===

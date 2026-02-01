@@ -24,6 +24,7 @@ impl CardStore {
     }
 }
 
+
 // Dirty means the CardStore has unsaved changes
 #[derive(Resource, Default)]
 pub struct Dirty(pub bool);

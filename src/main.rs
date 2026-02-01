@@ -3,7 +3,6 @@ use bevy::prelude::*;
 mod app;
 mod data;
 mod ui;
-mod assets;
 
 fn main() {
     App::new()

@@ -1,5 +1,8 @@
 use bevy::prelude::*;
-use crate::data::card::Tier;
+use crate::data::card::{Tier};
+use crate::data::card_store::{CardStore, Dirty};
+use crate::ui::card_view::{CardId, CardView};
+use crate::ui::interaction::SelectedCard;
 
 pub struct TierListUiPlugin;
 
@@ -11,28 +14,54 @@ impl Plugin for TierListUiPlugin {
     }
 }
 
+const TIERS_HOLDER_FONT_COLOR: Color = Color::linear_rgb(0.05, 0.05, 0.05);
+const WAITING_FONT_COLOR: Color = Color::linear_rgb(0.01, 0.01, 0.01);
+
+#[derive(Component)]
+pub struct CardPreviewArea;
+
 
 fn spawn_tier_list_ui(mut commands: Commands) {
-    commands.spawn((
-        Node {
-            width: Val::Percent(100.0),
+    commands.spawn(Node {
+        width: Val::Percent(100.0),
+        height: Val::Percent(100.0),
+        flex_direction: FlexDirection::Row,
+        ..default()
+    })
+    .with_children(|root| {
+
+        // left half of screen for tier list
+        root.spawn(Node {
+            width: Val::Percent(50.0),
             height: Val::Percent(100.0),
             flex_direction: FlexDirection::Column,
             ..default()
-        },
-        BackgroundColor(Color::srgb(0.08, 0.08, 0.08)),
-    ))
-    .with_children(|root| {
-        spawn_tiers(root);
-        spawn_unranked_area(root);
+        })
+        .with_children(|left| {
+            spawn_tiers(left);
+            spawn_unranked_area(left);
+        });
+
+        // right half for big Card preview
+        root.spawn((
+            CardPreviewArea,
+            Node {
+                width: Val::Percent(50.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            BackgroundColor(Color::linear_rgb(0.15, 0.15, 0.15)),
+        ));
     });
 }
+
 
 
 fn spawn_tiers(parent: &mut ChildSpawnerCommands) {
     for tier in Tier::ORDER {
         parent.spawn((
-            // TierRow { tier: tier.clone() },
             Node {
                 width: Val::Percent(100.0),
                 min_height: Val::Px(80.0),
@@ -40,13 +69,49 @@ fn spawn_tiers(parent: &mut ChildSpawnerCommands) {
                 align_items: AlignItems::Stretch,
                 ..default()
             },
+            tier.clone(),
         ))
         .with_children(|row| {
             spawn_tier_label(row, tier.clone());
             spawn_tier_container(row, tier.clone());
-        });
+        })
+        .observe(rotate_on_drag)
+        ;
     }
 }
+
+
+fn rotate_on_drag(
+    drag: On<Pointer<Release>>,
+
+    mut selected: ResMut<SelectedCard>,
+    mut store: ResMut<CardStore>,
+    mut dirty: ResMut<Dirty>,
+    mut commands: Commands,
+
+    card_query: Query<(Entity, &CardId), With<CardView>>,
+    tier_query: Query<&Tier>,
+) {
+    let tier = tier_query.get(drag.entity).unwrap().clone();
+
+    let Some(selected_id) = selected.card_id.clone() else { return; };
+    info!("Dropping card {:?} into tier {:?}", selected_id, tier.clone().label());
+
+    let Some((card_entity, _)) = card_query
+        .iter()
+        .find(|(_, id)| id.0 == selected_id)
+    else { return };
+
+    commands.entity(drag.entity).add_child(card_entity);
+
+    if let Some(card) = store.cards.iter_mut().find(|c| c.id == selected_id) {
+        card.tier = Some(tier);
+    }
+
+    dirty.0 = true;
+    selected.card_id = None;
+}
+
 
 
 fn spawn_tier_label(parent: &mut ChildSpawnerCommands, tier: Tier) {
@@ -72,7 +137,7 @@ fn spawn_tier_container(parent: &mut ChildSpawnerCommands, tier: Tier) {
             padding: UiRect::all(Val::Px(6.0)),
             ..default()
         },
-        BackgroundColor(Color::srgb(0.15, 0.15, 0.15)),
+        BackgroundColor(TIERS_HOLDER_FONT_COLOR),
     ));
 }
 
@@ -87,7 +152,7 @@ fn spawn_unranked_area(parent: &mut ChildSpawnerCommands) {
             padding: UiRect::all(Val::Px(8.0)),
             ..default()
         },
-        BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
+        BackgroundColor(WAITING_FONT_COLOR),
     ));
 }
 
