@@ -129,18 +129,32 @@ fn spawn_tier_label(parent: &mut ChildSpawnerCommands, tier: Tier) {
 
 
 fn spawn_tier_container(parent: &mut ChildSpawnerCommands, tier: Tier) {
-    parent.spawn((
-        TierContainer { tier },
-        Interaction::default(),
-        Node {
-            flex_grow: 1.0,
-            flex_wrap: FlexWrap::Wrap,
-            padding: UiRect::all(Val::Px(6.0)),
-            ..default()
-        },
-        BackgroundColor(TIERS_HOLDER_FONT_COLOR),
-    ));
+    parent
+        // wrapper for scroll
+        .spawn((
+            TierContainer { tier },
+            Interaction::default(),
+            Node {
+                flex_grow: 1.0,
+                height: Val::Px(120.0), // fixed height for the scroll to work
+                overflow: Overflow::scroll_y(), // n.b.
+                ..default()
+            },
+            BackgroundColor(TIERS_HOLDER_FONT_COLOR),
+        ))
+        .with_children(|scroll_view| {
+            // real show of cards
+            scroll_view.spawn((
+                Node {
+                    width: Val::Percent(100.0),
+                    flex_wrap: FlexWrap::Wrap,
+                    padding: UiRect::all(Val::Px(6.0)),
+                    ..default()
+                },
+            ));
+        });
 }
+
 
 
 fn spawn_unranked_area(parent: &mut ChildSpawnerCommands) {
