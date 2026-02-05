@@ -1,4 +1,9 @@
-use bevy::prelude::*;
+
+use bevy::{
+    input::mouse::{MouseScrollUnit, MouseWheel},
+    picking::hover::HoverMap,
+    prelude::*,
+};
 
 use crate::data::card_store::{CardStore, Dirty};
 use crate::ui::{
@@ -30,7 +35,8 @@ impl Plugin for TierListAppPlugin {
 
             // === Auto Save ===
             .add_systems(Update, auto_save_system)
-            
+            .add_systems(Update, send_scroll_events)
+            .add_observer(on_scroll_handler)
             ;
 
     }
@@ -39,7 +45,8 @@ impl Plugin for TierListAppPlugin {
 
 // TODO to move
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    // commands.spawn(Camera2d);
+    commands.spawn((Camera2d, IsDefaultUiCamera));
 }
 
 
@@ -76,36 +83,86 @@ fn auto_save_system(
 
 
 
+const LINE_HEIGHT: f32 = 21.;
 
-// Updates the scroll position of scrollable nodes in response to mouse input
-// pub fn update_scroll_position(
-//     mut mouse_wheel_events: EventReader<MouseWheel>,
-//     hover_map: Res<HoverMap>,
-//     mut scrolled_node_query: Query<&mut ScrollPosition>,
-//     keyboard_input: Res<ButtonInput<KeyCode>>,
-// ) {
-//     for mouse_wheel_event in mouse_wheel_events.read() {
-//         let (mut dx, mut dy) = match mouse_wheel_event.unit {
-//             MouseScrollUnit::Line => (
-//                 mouse_wheel_event.x * 20., // * LINE_HEIGHT,
-//                 mouse_wheel_event.y * 20., // * LINE_HEIGHT,
-//             ),
-//             MouseScrollUnit::Pixel => (mouse_wheel_event.x, mouse_wheel_event.y),
-//         };
+/// Injects scroll events into the UI hierarchy.
+fn send_scroll_events(
+    mut mouse_wheel_reader: MessageReader<MouseWheel>,
+    hover_map: Res<HoverMap>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+) {
+    for mouse_wheel in mouse_wheel_reader.read() {
+        let mut delta = -Vec2::new(mouse_wheel.x, mouse_wheel.y);
 
-//         if keyboard_input.pressed(KeyCode::ControlLeft)
-//             || keyboard_input.pressed(KeyCode::ControlRight)
-//         {
-//             std::mem::swap(&mut dx, &mut dy);
-//         }
+        if mouse_wheel.unit == MouseScrollUnit::Line {
+            delta *= LINE_HEIGHT;
+        }
 
-//         for (_pointer, pointer_map) in hover_map.iter() {
-//             for (entity, _hit) in pointer_map.iter() {
-//                 if let Ok(mut scroll_position) = scrolled_node_query.get_mut(*entity) {
-//                     scroll_position.offset_x -= dx;
-//                     scroll_position.offset_y -= dy;
-//                 }
-//             }
-//         }
-//     }
-// }
+        if keyboard_input.any_pressed([KeyCode::ControlLeft, KeyCode::ControlRight]) {
+            std::mem::swap(&mut delta.x, &mut delta.y);
+        }
+
+        for pointer_map in hover_map.values() {
+            for entity in pointer_map.keys().copied() {
+                commands.trigger(Scroll { entity, delta });
+            }
+        }
+    }
+}
+
+/// UI scrolling event.
+#[derive(EntityEvent, Debug)]
+#[entity_event(propagate, auto_propagate)]
+struct Scroll {
+    entity: Entity,
+    /// Scroll delta in logical coordinates.
+    delta: Vec2,
+}
+
+fn on_scroll_handler(
+    mut scroll: On<Scroll>,
+    mut query: Query<(&mut ScrollPosition, &Node, &ComputedNode)>,
+) {
+    let Ok((mut scroll_position, node, computed)) = query.get_mut(scroll.entity) else {
+        return;
+    };
+
+    let max_offset = (computed.content_size() - computed.size()) * computed.inverse_scale_factor();
+
+    let delta = &mut scroll.delta;
+    if node.overflow.x == OverflowAxis::Scroll && delta.x != 0. {
+        // Is this node already scrolled all the way in the direction of the scroll?
+        let max = if delta.x > 0. {
+            scroll_position.x >= max_offset.x
+        } else {
+            scroll_position.x <= 0.
+        };
+
+        if !max {
+            scroll_position.x += delta.x;
+            // Consume the X portion of the scroll delta.
+            delta.x = 0.;
+        }
+    }
+
+    if node.overflow.y == OverflowAxis::Scroll && delta.y != 0. {
+        // Is this node already scrolled all the way in the direction of the scroll?
+        let max = if delta.y > 0. {
+            scroll_position.y >= max_offset.y
+        } else {
+            scroll_position.y <= 0.
+        };
+
+        if !max {
+            scroll_position.y += delta.y;
+            // Consume the Y portion of the scroll delta.
+            delta.y = 0.;
+        }
+    }
+
+    // Stop propagating when the delta is fully consumed.
+    if *delta == Vec2::ZERO {
+        scroll.propagate(false);
+    }
+}

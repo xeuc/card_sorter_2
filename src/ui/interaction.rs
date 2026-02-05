@@ -120,24 +120,17 @@ fn show_card_to_big_preview(
     // Spawn new image
     commands.entity(preview_area).with_children(|parent| {
         parent.spawn((
-            // CardView,
-            // CardId(card_id.clone()),
-            // Button,
             ImageNode {
-                image: image_handle.clone(),
+                image: image_handle,
                 ..default()
             },
-            // Node {..default()},
             Node {
-                width: Val::Percent(100.0),
-                height: Val::Percent(100.0),
-                overflow: Overflow::hidden(),
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::Center,
+                max_width: Val::Percent(100.0),
+                max_height: Val::Percent(100.0),
+                width: Val::Auto,
+                height: Val::Auto,
                 ..default()
-            }
-
+            },
         ));
-        
     });
 }

@@ -49,6 +49,7 @@ fn spawn_tier_list_ui(mut commands: Commands) {
             Node {
                 width: Val::Percent(50.0),
                 height: Val::Percent(100.0),
+                overflow: Overflow::hidden(),
                 align_items: AlignItems::Center,
                 justify_content: JustifyContent::Center,
                 ..default()
@@ -132,8 +133,6 @@ fn spawn_tier_container(parent: &mut ChildSpawnerCommands, tier: Tier) {
     parent
         // wrapper for scroll
         .spawn((
-            TierContainer { tier },
-            Interaction::default(),
             Node {
                 flex_grow: 1.0,
                 height: Val::Px(120.0), // fixed height for the scroll to work
@@ -145,6 +144,8 @@ fn spawn_tier_container(parent: &mut ChildSpawnerCommands, tier: Tier) {
         .with_children(|scroll_view| {
             // real show of cards
             scroll_view.spawn((
+                TierContainer { tier },
+                Interaction::default(),
                 Node {
                     width: Val::Percent(100.0),
                     flex_wrap: FlexWrap::Wrap,
@@ -156,7 +157,6 @@ fn spawn_tier_container(parent: &mut ChildSpawnerCommands, tier: Tier) {
 }
 
 
-
 fn spawn_unranked_area(parent: &mut ChildSpawnerCommands) {
     parent.spawn((
         UnrankedArea,
@@ -165,11 +165,13 @@ fn spawn_unranked_area(parent: &mut ChildSpawnerCommands) {
             min_height: Val::Px(200.0),
             flex_wrap: FlexWrap::Wrap,
             padding: UiRect::all(Val::Px(8.0)),
+            overflow: Overflow::scroll_y(), // n.b.
             ..default()
         },
-        BackgroundColor(WAITING_FONT_COLOR),
+        BackgroundColor(Color::srgb(0.1, 0.1, 0.1)),
     ));
 }
+
 
 
 #[derive(Component)]
